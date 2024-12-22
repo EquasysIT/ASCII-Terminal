@@ -6,6 +6,23 @@
 -- October 2024                                             --
 --------------------------------------------------------------
 
+----------------
+-- Memory Map --
+----------------
+-- 0000 to 3FFF RAM 16K
+-- 4000 to BFFF Unused 32K
+-- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE1)
+-- C000 MS BASIC
+-- FE00 WOZMON
+
+-- FCE0 read ASCII value of key pressed
+-- FCE1 valid key pressed status (1)
+-- FCE2 read ASCII byte available over the UART interface (115200,8,1,N)
+-- FCE3 valid byte available over the UART interface status (1)
+-- FFE0 send byte to screen
+-- FFE1 write to LED control port (see below)
+-- FFE2 Set character colour (0 = Black, 1 = Blue, 2 = Red, 3 = Magenta, 4 = Green, 5 = Cyan, 6 = Yellow, 7 = White)
+-- FFE3 Set background colour
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -18,6 +35,7 @@ entity comp_top is
            btn2         : in   std_logic;
            ps2_clk      : inout	std_logic;
            ps2_data     : inout	std_logic;
+           rxd          : in   std_logic;
            nCSync		: out  std_logic;
 		   nVSync		: out  std_logic;
            R			: out  std_logic;
@@ -27,7 +45,7 @@ entity comp_top is
 		);			  
 end comp_top;
 
-architecture behavioral of comp_top is
+architecture rtl of comp_top is
 
 -------------
 -- Signals --
@@ -37,7 +55,7 @@ architecture behavioral of comp_top is
 signal clk140       :   std_logic;
 signal clk28        :   std_logic;
 signal cpu_clken    :   std_logic;
-signal clken_counter:	std_logic_vector(4 downto 0);
+signal clken_counter:	std_logic_vector(3 downto 0);
 
 -- Main Reset
 signal reset_n      :   std_logic := '0';
@@ -79,6 +97,10 @@ signal crg_clken    :   std_logic;
 signal keyb_valid   :   std_logic;
 signal ps2_ascii    :   std_logic_vector(7 downto 0);
 
+-- UART Receiver signals
+signal urx_valid    :   std_logic;
+signal rx_valid     :   std_logic;
+signal rx_byte      :   std_logic_vector(7 downto 0);
 
 begin
 
@@ -96,7 +118,7 @@ U2: entity work.Gowin_CLKDIV
         hclkin => clk140,
         resetn => '1'
     );
-	
+
 -- 28Mhz master clock
 process(clk28)
 begin
@@ -149,7 +171,15 @@ cpu_a(23 downto 16) <= (others => '0');
 cpu_nmi_n <= '1';
 cpu_irq_n <= '1';
 
-U6: entity work.ascii_term port map
+U6: entity work.UART_RX port map
+    (
+    clk         => clk28,
+    rx_bit      => rxd,
+    rx_valid    => urx_valid,
+    rx_byte     => rx_byte
+    );
+
+U7: entity work.ascii_term port map
     (
         clk         => clk28,
         reset_n     => reset_n,
@@ -169,16 +199,43 @@ U6: entity work.ascii_term port map
 		B           => B
 	);			  
 
-rom_enable <= '1' when cpu_a(15) = '1' and cpu_a(14) = '1' and cpu_r_nw = '1' and cpu_a /= x"fce0" and cpu_a /= x"fce1" and cpu_a /= x"ffe0" else '0';
+rom_enable <= '1' when cpu_a(15) = '1' and cpu_a(14) = '1' and cpu_r_nw = '1' and cpu_a /= x"ffe0" else '0';
 ram_enable <= '1' when cpu_a(15) = '0' and cpu_a(14) = '0' else '0';
 ram_rw <= '1' when ram_enable = '1' and cpu_r_nw = '0' and cpu_clken = '1' else '0';
 
 cpu_di <= "0000000" & keyb_valid when cpu_a = x"fce1" and cpu_r_nw = '1' else -- CPU read keyboard status
           ps2_ascii when cpu_a = x"fce0" and cpu_r_nw = '1' else -- CPU read ascii value of key pressed
+          "0000000" & rx_valid when cpu_a = x"fce3" and cpu_r_nw = '1' else -- CPU read UART status
+          rx_byte when cpu_a = x"fce2" and cpu_r_nw = '1' else -- CPU read ascii value of key pressed
           rom_data when rom_enable = '1' else
           ram_data when ram_enable = '1' else
           x"ff";
 
+-- Control LEDs by writing to port FFE1
+process(clk28)
+begin
+    if rising_edge(clk28) then
+        if reset_n = '0' then
+            led <= "111111";
+        elsif cpu_a = x"ffe1" and cpu_r_nw = '0' then
+            led <= not cpu_do(5 downto 0);
+        end if;
+    end if;
+end process;
+
+-- Ensure UART receive "valid state" is only valid again after the CPU has read a valid byte
+process(clk28)
+begin
+    if rising_edge(clk28) then
+        if reset_n = '0' then
+            rx_valid <= '0';
+        elsif urx_valid = '1' then
+            rx_valid <= '1';
+        elsif cpu_a = x"fce2" and cpu_r_nw = '1' then -- CPU reads byte, reset valid state to not valid
+            rx_valid <= '0';
+        end if;
+    end if;
+end process;
 
 -- Reset
 process(clk28)
@@ -191,6 +248,4 @@ begin
     end if;
 end process;
 
-led <= "011111" when reset_n = '0' else "111111";
-
-end behavioral;
+end rtl;

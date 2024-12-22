@@ -10,7 +10,7 @@ entity ps2_intf is
 	generic(clk_freq	:	integer := 28_000_000); -- Set to incoming clock frequency
 	port(
 		clk				:	in	std_logic;
-		nreset			:	in	std_logic;
+		reset_n			:	in	std_logic;
 		
 		-- ps/2 interface (now supports send and receive)
 		ps2_clk			:	inout	std_logic;
@@ -24,7 +24,7 @@ entity ps2_intf is
 		);
 	end ps2_intf;
 
-architecture ps2_intf_arch of ps2_intf is
+architecture rtl of ps2_intf is
 type machine is(receive, inhibit, transact, tx_complete);
 signal	state				:	machine := receive;
 subtype filter_t is std_logic_vector(7 downto 0);
@@ -43,9 +43,9 @@ signal	rx_error			:	std_logic;
 begin
 
 	-- register input signals
-	process(nreset,clk)
+	process(reset_n,clk)
 	begin
-		if nreset = '0' then
+		if reset_n = '0' then
 			ps2_clk_in <= '1';
 			ps2_dat_in <= '1';
 			clk_filter <= (others => '1');
@@ -68,9 +68,9 @@ begin
 		end if;
 	end process;
 	
-	process(nreset,clk)
+	process(reset_n,clk)
 	begin
-		if nreset = '0' then
+		if reset_n = '0' then
 			ps2_clk <= '0';
 			ps2_data <= 'Z';
 			tx_busy <= '0';
@@ -177,4 +177,4 @@ begin
 			end case;
 		end if;
 	end process;
-end ps2_intf_arch;
+end rtl;

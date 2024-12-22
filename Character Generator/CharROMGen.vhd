@@ -1,3 +1,12 @@
+--------------------------------------------------------------
+-- Engineer: A Burgess                                      --
+--                                                          --
+-- Design Name: Character ROM Generator                     --
+--                                                          --
+-- October 2024                                             --
+--------------------------------------------------------------
+
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
@@ -10,6 +19,8 @@ entity crg is
            hcur_pos    : in   std_logic_vector(4 downto 0);
            vcur_pos    : in   std_logic_vector(4 downto 0);
            addrascii   : out  std_logic_vector(9 downto 0);
+           txtcol      : in   std_logic_vector(2 downto 0);
+           bckcol      : in   std_logic_vector(2 downto 0);
            nCSync	   : out  std_logic;
 		   nVSync	   : out  std_logic;
            R		   : out  std_logic;
@@ -18,7 +29,7 @@ entity crg is
 		);
 end crg;
 
-architecture Behavioral of crg is
+architecture rtl of crg is
 
 -------------
 -- Signals
@@ -51,6 +62,9 @@ signal video        :   std_logic;
 
 signal pixel        :   std_logic;
 signal pixelreg	    :   std_logic_vector(7 downto 0);
+signal red          :   std_logic;
+signal green        :   std_logic;
+signal blue         :   std_logic;
 
 -- ASCII Character RAM to Character ROM pixel mappings
 signal addrpixel    :   std_logic_vector(9 downto 0) := (others => '0');
@@ -139,37 +153,37 @@ process(clk)
 begin		
 	if rising_edge(clk) then        -- Length 192
 		if enable = '1' then
-        if vcounter = 0 then
-            vgenvideo <= '1';
-        elsif vcounter = 192 then
-            vgenvideo <= '0';
-        end if;
+            if vcounter = 0 then
+                vgenvideo <= '1';
+            elsif vcounter = 192 then
+                vgenvideo <= '0';
+            end if;
 
-        -- Bottom Border
-        if vcounter = 192 then     -- Length 56
-            vborder <= '1';
-        elsif vcounter = 248 then
-            vborder <= '0';
-        end if;
+            -- Bottom Border
+            if vcounter = 192 then     -- Length 56
+                vborder <= '1';
+            elsif vcounter = 248 then
+                vborder <= '0';
+            end if;
 
-        if vcounter = 248 then     -- Length 8
-            vblanking <= '0';
-        elsif vcounter = 256 then
-            vblanking <= '1';
-        end if;
+            if vcounter = 248 then     -- Length 8
+                vblanking <= '0';
+            elsif vcounter = 256 then
+                vblanking <= '1';
+            end if;
 
-        if vcounter = 248 then     -- Length 4
-            vsync <= '0';
-        elsif vcounter = 252 then
-            vsync <= '1';
-        end if;
+            if vcounter = 248 then     -- Length 4
+                vsync <= '0';
+            elsif vcounter = 252 then
+                vsync <= '1';
+            end if;
 
-        -- Top Border
-        if vcounter = 256 then     -- Length 56  (Vsync is inside same area as blanking so we don't add this)
-            vborder <= '1';
-        elsif vcounter = 312 then
-            vborder <= '0';
-        end if;
+            -- Top Border
+            if vcounter = 256 then     -- Length 56  (Vsync is inside same area as blanking so we don't add this)
+                vborder <= '1';
+            elsif vcounter = 312 then
+                vborder <= '0';
+            end if;
 		end if;
 	end if;                        -- Total 312
 end process;
@@ -223,17 +237,19 @@ begin
 	end if;
 end process;
 
-pixel <= not pixelreg(7);
+red <= txtcol(1) when pixelreg(7) = '0' else bckcol(1);
+green <= txtcol(2) when pixelreg(7) = '0' else bckcol(2);
+blue <= txtcol(0) when pixelreg(7) = '0' else bckcol(0);
 
 border <= '1' when (hborder = '1' or vborder = '1') and hblanking = '1' and vblanking = '1' else '0';
 video <= '1' when hgenvideo = '1' and vgenvideo = '1' else '0';
 
-process(video, pixel, border)
+process(video, pixel, red, green, blue, border)
 begin		
     if video = '1' then -- Main video display area
-        R <= '0';
-		G <= pixel;
-		B <= '0';
+        R <= red;
+		G <= green;
+		B <= blue;
     elsif border = '1' then -- Border area
 		R <= '1';
 		G <= '1';
@@ -248,5 +264,5 @@ end process;
 nCSync <= hsync and vsync;
 nVSync <= vsync;
 
-end Behavioral;
+end rtl;
 

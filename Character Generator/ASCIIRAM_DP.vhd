@@ -1,3 +1,11 @@
+--------------------------------------------------------------
+-- Engineer: A Burgess                                      --
+--                                                          --
+-- Design Name: ASCII Character RAM                         --
+--                                                          --
+-- October 2024                                             --
+--------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
@@ -17,10 +25,10 @@ entity asciiram_dp is
         );
 end;
 
-architecture behavioral of asciiram_dp is
+architecture rtl of asciiram_dp is
 
     type ram_type is array (0 to 767) of std_logic_vector (7 downto 0);
-    shared variable RAM : ram_type := (others => "00100000"); -- Fill with spaces, ASCII 32
+    shared variable RAM : ram_type;
 
 begin
 
@@ -44,4 +52,4 @@ begin
         end if;
     end process;
 
-end behavioral;
+end rtl;

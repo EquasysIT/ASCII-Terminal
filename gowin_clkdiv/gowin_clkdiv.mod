@@ -7,7 +7,7 @@
 
 -mod_name Gowin_CLKDIV
 -file_name gowin_clkdiv
--path C:/FPGA/Tang Nano 9K/Projects/ZX Spectrum/Basic Video Controller/ZX Spectrum VGA Basic Video Controller/src/gowin_clkdiv/
+-path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working/src/gowin_clkdiv/
 -type CLKDIV
 -file_type vhdl
 -division_factor 5

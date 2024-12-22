@@ -33,21 +33,22 @@ entity ascii_term is
 end ascii_term;
 
 
-architecture behavioral of ascii_term is
+architecture rtl of ascii_term is
 
 -------------
 -- Signals --
 -------------
 
 -- Character Generator Signals
-signal addrascii    :   std_logic_vector(9 downto 0) := (others => '0');
-signal dataascii    :   std_logic_vector(7 downto 0) := (others => '0');
-signal asciiram_data:   std_logic_vector(7 downto 0);
+signal addrascii_v  :   std_logic_vector(9 downto 0) := (others => '0');
+signal dataascii_v  :   std_logic_vector(7 downto 0) := (others => '0');
+signal dataascii_out:   std_logic_vector(7 downto 0);
 signal ascii_r_w    :   std_logic;
+signal txtcol       :   std_logic_vector(2 downto 0);
+signal bckcol       :   std_logic_vector(2 downto 0);
 
 -- Scroll Screen Signals
 signal scnpos       :   std_logic_vector(9 downto 0);
-signal scnpos2      :   std_logic_vector(9 downto 0);
 signal scnchar      :   std_logic_vector(7 downto 0);
 
 -- Cursor Control
@@ -59,15 +60,15 @@ signal ps2_valid    :   std_logic;
 signal ps2_ascii_s  :   std_logic_vector(7 downto 0);
 
 -- CPU Signals
-signal addr_cpu     :	std_logic_vector(9 downto 0);
-signal dataout_cpu  :	std_logic_vector(7 downto 0);
+signal addrascii_c  :	std_logic_vector(9 downto 0);
+signal dataascii_in :	std_logic_vector(7 downto 0);
 signal datain_cpu   :	std_logic_vector(7 downto 0);
 
 -- General counter
 signal gcounter     :   std_logic_vector(9 downto 0);
 
 -- Screen update control signals
-type scn_machine is ( norm, srlread, srlwrite );
+type scn_machine is ( norm, srlread, srlwrite, srlblank );
 signal scn_state    :	scn_machine := norm;
 
 begin
@@ -76,15 +77,15 @@ begin
 U1 : entity work.keyboard port map
     (
         clk => clk,
-        nreset => reset_n,
+        reset_n => reset_n,
         ps2_clk => ps2_clk,
-        ps2_valid => ps2_valid,
         ps2_data => ps2_data,
+        ps2_valid => ps2_valid,
         keyb_ascii => ps2_ascii_s
 	);
 ps2_ascii <= ps2_ascii_s;
 
--- Ensure keypress "valid state" is only valid after the CPU has read a valid key
+-- Ensure keypress "valid state" is only valid again after the CPU has read a valid key
 process(clk)
 begin
     if rising_edge(clk) then
@@ -104,15 +105,15 @@ U2 : entity work.asciiram_dp port map
         -- Port A is for CPU to read/write the character RAM
         clka  => clk,
         wea  => ascii_r_w,
-        addra => addr_cpu,
-        dataina  => dataout_cpu,
-        dataouta  => asciiram_data,
+        addra => addrascii_c,
+        dataina  => dataascii_in,
+        dataouta  => dataascii_out,
         -- Port B is for the Character ROM Generator
         clkb  => clk,
         web  => '0', -- Read only
-        addrb => addrascii,
+        addrb => addrascii_v,
         datainb => x"00",
-        dataoutb => dataascii
+        dataoutb => dataascii_v
     );
 
 -- Character Generator
@@ -120,10 +121,12 @@ U3: entity work.crg port map
     (
         clk => clk,
 		enable => crg_clken,
-        dataascii => dataascii,
+        dataascii => dataascii_v,
         hcur_pos => hcursor,
         vcur_pos => vcursor,
-        addrascii => addrascii,
+        addrascii => addrascii_v,
+        txtcol => txtcol,
+        bckcol => bckcol,
         nCSync => nCSync,
 		nVSync => nVSync,
         R => R,
@@ -131,13 +134,29 @@ U3: entity work.crg port map
 		B => B
 	);	
 
+-- Set character and background colour
+process(clk)
+begin
+    if rising_edge(clk) then
+        if reset_n = '0' then
+            txtcol <= "111";
+            bckcol <= "000";
+        elsif cpu_a = x"ffe2" and cpu_r_nw = '0' then
+            txtcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe3" and cpu_r_nw = '0' then
+            bckcol <= cpu_do(2 downto 0);
+        end if;
+    end if;
+end process;
+
+-- Write to screen and manage scrolling
 process(clk)
 begin
 	if rising_edge(clk) then
         gcounter <= gcounter + 1;
 		if reset_n = '0' then
-			addr_cpu <= gcounter(9 downto 0); -- Clear screen
-			dataout_cpu <= x"20";
+			addrascii_c <= gcounter(9 downto 0); -- Clear screen
+			dataascii_in <= x"20";
 			ascii_r_w <= '1';
 			hcursor <= "00000";
 			vcursor <= "00000";
@@ -150,14 +169,16 @@ begin
                         ascii_r_w <= '1';
                         if cpu_do = x"08" then -- Backspace ascii code                                
                             if hcursor /= 0 or vcursor /= 0 then
-                                dataout_cpu <= x"20";
+                                dataascii_in <= x"20";
                                 hcursor <= hcursor - 1;
-                                addr_cpu <= vcursor & hcursor - 1;
+                                addrascii_c <= vcursor & hcursor - 1;
                                 if hcursor = 0 then
                                     vcursor <= vcursor - 1;
                                 end if;
                             end if;
-                        elsif cpu_do = x"0d" then -- Return ascii code
+                        elsif cpu_do = x"0d" then -- Carriage Return ascii code
+                            hcursor <= "00000";
+                        elsif cpu_do = x"0a" then -- Line feed ascii code
                             hcursor <= "00000";
                             if vcursor /= 23 then
                                 vcursor <= vcursor + 1;
@@ -165,9 +186,9 @@ begin
                                 scn_state <= srlread;
                             end if;
                         elsif cpu_do /= x"ff" then -- Any other valid ascii code
-                            dataout_cpu <= cpu_do;
+                            dataascii_in <= cpu_do;
                             hcursor <= hcursor + 1;
-                            addr_cpu <= vcursor & hcursor;
+                            addrascii_c <= vcursor & hcursor;
                             if hcursor = 31 then
                                 hcursor <= "00000";
                                 if vcursor /= 23 then
@@ -181,27 +202,31 @@ begin
                 -- Scroll the screen --
                 when srlread =>
                     -- Read character from row
-                    if scnpos <= 769 then
+                    if scnpos <= 768 then
                         ascii_r_w <= '0';
+                        addrascii_c <= scnpos;
+                        scnchar <= dataascii_out;
                         scn_state <= srlwrite;
-                        scnpos <= scnpos + 1;
-                        addr_cpu <= scnpos;
-                        scnchar <= asciiram_data;
                     end if;
                 when srlwrite =>
                     -- Write character to row above where it was read
-                    if scnpos <= 769 then
+                    if scnpos <= 768 then
+                        if scnpos = 768 then
+                            scn_state <= srlblank;
+                        else
+                            scn_state <= srlread;
+                        end if;
                         ascii_r_w <= '1';
-                        scn_state <= srlread;
-                        scnpos2 <= scnpos - 33;
-                        addr_cpu <= scnpos2;
-                        dataout_cpu <= scnchar;
+                        addrascii_c <= scnpos - 33;
+                        dataascii_in <= scnchar;
+                        scnpos <= scnpos + 1;
+                    end if;
+                when srlblank =>
                     -- Blank bottom line after scroll
-                    elsif scnpos2 > 733 and scnpos2 <= 769 then
+                    if addrascii_c <= 767 then
                         ascii_r_w <= '1';
-                        scnpos2 <= scnpos2 + 1;
-                        addr_cpu <= scnpos2;
-                        dataout_cpu <= x"20";
+                        addrascii_c <= addrascii_c + 1;
+                        dataascii_in <= x"20";
                     else
                         ascii_r_w <= '0';
                         scnpos <= "00" & x"20";
@@ -212,4 +237,4 @@ begin
         end if;
     end if;
 end process;
-end behavioral;
+end rtl;

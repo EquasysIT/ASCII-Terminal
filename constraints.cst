@@ -1,5 +1,3 @@
-# Clock Test
-
 IO_LOC  "clk27" 52;
 IO_PORT "clk27"     IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
@@ -35,3 +33,6 @@ IO_LOC "ps2_clk" 25;
 IO_PORT "ps2_clk" IO_TYPE=LVCMOS33;
 IO_LOC "ps2_data" 26;
 IO_PORT "ps2_data" IO_TYPE=LVCMOS33;
+
+IO_LOC "rxd" 18;
+IO_PORT "rxd" IO_TYPE=LVCMOS33;

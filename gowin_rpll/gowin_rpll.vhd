@@ -5,7 +5,7 @@
 --Part Number: GW1NR-LV9QN88PC6/I5
 --Device: GW1NR-9
 --Device Version: C
---Created Time: Fri Oct 11 18:45:12 2024
+--Created Time: Sat Dec 21 14:34:49 2024
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -24,7 +24,6 @@ architecture Behavioral of Gowin_rPLL is
     signal clkoutd_o: std_logic;
     signal clkoutd3_o: std_logic;
     signal gw_gnd: std_logic;
-    signal gw_high: std_logic;
     signal FBDSEL_i: std_logic_vector(5 downto 0);
     signal IDSEL_i: std_logic_vector(5 downto 0);
     signal ODSEL_i: std_logic_vector(5 downto 0);
@@ -79,7 +78,6 @@ architecture Behavioral of Gowin_rPLL is
 
 begin
     gw_gnd <= '0';
-    gw_high <= '1';
 
     FBDSEL_i <= gw_gnd & gw_gnd & gw_gnd & gw_gnd & gw_gnd & gw_gnd;
     IDSEL_i <= gw_gnd & gw_gnd & gw_gnd & gw_gnd & gw_gnd & gw_gnd;

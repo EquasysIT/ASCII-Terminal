@@ -1,3 +1,12 @@
+--------------------------------------------------------------
+-- Engineer: A Burgess                                      --
+--                                                          --
+-- Design Name: Pixel Character ROM                         --
+--                                                          --
+-- October 2024                                             --
+--------------------------------------------------------------
+
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
