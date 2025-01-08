@@ -192,7 +192,7 @@ process(clk)
 begin
 	if rising_edge(clk) then
 		if enable = '1' then
-        flshcount <= flshcount + 1;
+            flshcount <= flshcount + 1;
 		end if;
 	end if;
 end process;

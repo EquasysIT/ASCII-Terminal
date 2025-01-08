@@ -11,16 +11,17 @@
 ----------------
 -- 0000 to 3FFF RAM 16K
 -- 4000 to BFFF Unused 32K
--- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE1)
+-- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE3)
 -- C000 MS BASIC
 -- FE00 WOZMON
 
+-- I/O ports within memory map
 -- FCE0 read ASCII value of key pressed
--- FCE1 valid key pressed status (1)
+-- FCE1 valid key pressed status (1 = pressed)
 -- FCE2 read ASCII byte available over the UART interface (115200,8,1,N)
--- FCE3 valid byte available over the UART interface status (1)
+-- FCE3 valid byte available over the UART interface status (1 = byte available)
 -- FFE0 send byte to screen
--- FFE1 write to LED control port (see below)
+-- FFE1 write to LED control port
 -- FFE2 Set character colour (0 = Black, 1 = Blue, 2 = Red, 3 = Magenta, 4 = Green, 5 = Cyan, 6 = Yellow, 7 = White)
 -- FFE3 Set background colour
 
@@ -55,7 +56,7 @@ architecture rtl of comp_top is
 signal clk140       :   std_logic;
 signal clk28        :   std_logic;
 signal cpu_clken    :   std_logic;
-signal clken_counter:	std_logic_vector(3 downto 0);
+signal clken_counter:	std_logic_vector(7 downto 0);
 
 -- Main Reset
 signal reset_n      :   std_logic := '0';
@@ -199,14 +200,14 @@ U7: entity work.ascii_term port map
 		B           => B
 	);			  
 
-rom_enable <= '1' when cpu_a(15) = '1' and cpu_a(14) = '1' and cpu_r_nw = '1' and cpu_a /= x"ffe0" else '0';
+rom_enable <= '1' when cpu_a(15) = '1' and cpu_a(14) = '1' and cpu_r_nw = '1' else '0';
 ram_enable <= '1' when cpu_a(15) = '0' and cpu_a(14) = '0' else '0';
 ram_rw <= '1' when ram_enable = '1' and cpu_r_nw = '0' and cpu_clken = '1' else '0';
 
 cpu_di <= "0000000" & keyb_valid when cpu_a = x"fce1" and cpu_r_nw = '1' else -- CPU read keyboard status
           ps2_ascii when cpu_a = x"fce0" and cpu_r_nw = '1' else -- CPU read ascii value of key pressed
           "0000000" & rx_valid when cpu_a = x"fce3" and cpu_r_nw = '1' else -- CPU read UART status
-          rx_byte when cpu_a = x"fce2" and cpu_r_nw = '1' else -- CPU read ascii value of key pressed
+          rx_byte when cpu_a = x"fce2" and cpu_r_nw = '1' else -- CPU read ascii value over UART of key pressed
           rom_data when rom_enable = '1' else
           ram_data when ram_enable = '1' else
           x"ff";

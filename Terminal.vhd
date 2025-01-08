@@ -46,6 +46,8 @@ signal dataascii_out:   std_logic_vector(7 downto 0);
 signal ascii_r_w    :   std_logic;
 signal txtcol       :   std_logic_vector(2 downto 0);
 signal bckcol       :   std_logic_vector(2 downto 0);
+signal ansi_par1    :   std_logic_vector(4 downto 0);
+signal ansi_par2    :   std_logic_vector(4 downto 0);
 
 -- Scroll Screen Signals
 signal scnpos       :   std_logic_vector(9 downto 0);
@@ -63,12 +65,11 @@ signal ps2_ascii_s  :   std_logic_vector(7 downto 0);
 signal addrascii_c  :	std_logic_vector(9 downto 0);
 signal dataascii_in :	std_logic_vector(7 downto 0);
 signal datain_cpu   :	std_logic_vector(7 downto 0);
-
--- General counter
-signal gcounter     :   std_logic_vector(9 downto 0);
+signal cpu_fcounter :   std_logic_vector(12 downto 0) := (others => '0');
+signal cpu_fc_reset :   std_logic := '0';
 
 -- Screen update control signals
-type scn_machine is ( norm, srlread, srlwrite, srlblank );
+type scn_machine is ( norm, srlread, srlwrite, srlblank, ansi_code_ctrl, ansi_code_par_1, ansi_code_action, ansi_code_cls, ansi_code_par_2, ansi_code_poscur_H, ansi_code_poscur );
 signal scn_state    :	scn_machine := norm;
 
 begin
@@ -153,9 +154,15 @@ end process;
 process(clk)
 begin
 	if rising_edge(clk) then
-        gcounter <= gcounter + 1;
+        -- Count CPU ticks
+        if cpu_fc_reset = '1' then
+            cpu_fcounter <= (others => '0');
+            cpu_fc_reset <= '0';
+        elsif enable = '1' then
+            cpu_fcounter <= cpu_fcounter + 1;
+        end if;
 		if reset_n = '0' then
-			addrascii_c <= gcounter(9 downto 0); -- Clear screen
+			addrascii_c <= cpu_fcounter(9 downto 0); -- Clear screen
 			dataascii_in <= x"20";
 			ascii_r_w <= '1';
 			hcursor <= "00000";
@@ -167,7 +174,10 @@ begin
                 when norm =>
                     if (cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1' and cpu_do /= x"ff") then -- CPU writing to screen with valid character
                         ascii_r_w <= '1';
-                        if cpu_do = x"08" then -- Backspace ascii code                                
+                        if cpu_do = x"1b" then -- Escape sequence so process ANSI code
+                            cpu_fc_reset <= '1';
+                            scn_state <= ansi_code_ctrl;
+                        elsif cpu_do = x"08" then -- Backspace ascii code                                
                             if hcursor /= 0 or vcursor /= 0 then
                                 dataascii_in <= x"20";
                                 hcursor <= hcursor - 1;
@@ -233,6 +243,82 @@ begin
                         scn_state <= norm;
                     end if;
                 -- End scroll the screen --
+
+                -- Process ANSI codes --
+                when ansi_code_ctrl =>
+                    -- Wait for ANSI code "[" -- Start of control sequence
+                    if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1'  then
+                        if cpu_do = x"5b" then
+                            cpu_fc_reset <= '1';
+                            scn_state <= ansi_code_par_1;
+                        end if;
+                    elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive
+                        scn_state <= norm;
+                    end if;
+                when ansi_code_par_1 =>
+                    -- Wait for ANSI parameter value 1
+                    if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1'  then
+                        if cpu_do >= 1 and cpu_do <= 24 then
+                            cpu_fc_reset <= '1';
+                            ansi_par1 <= cpu_do(4 downto 0) - 1;
+                            scn_state <= ansi_code_action;
+                        end if;
+                    elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive
+                        scn_state <= norm;
+                    end if;
+                when ansi_code_action =>
+                    -- Wait for ANSI action code
+                    if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1'  then
+                        if cpu_do = x"4a" then -- "J" = Clear Screen
+                            cpu_fc_reset <= '1';
+                            scn_state <= ansi_code_cls;
+                        elsif cpu_do = x"3b" then -- ";" = Position cursor
+                            cpu_fc_reset <= '1';
+                            scn_state <= ansi_code_par_2;
+                        end if;
+                    elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive
+                        scn_state <= norm;
+                    end if;
+                when ansi_code_cls =>
+                    -- Clear screen
+                    addrascii_c <= cpu_fcounter(9 downto 0);
+                    dataascii_in <= x"20";
+                    ascii_r_w <= '1';
+                    hcursor <= "00000";
+                    vcursor <= "00000";
+                    scnpos <= "00" & x"20";
+                    if cpu_fcounter = x"300" then -- Cycle 768 times to clear all characters from the screen
+                        scn_state <= norm;
+                    end if;
+                when ansi_code_par_2 =>
+                    -- Wait for ANSI parameter value 2
+                    if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1' then
+                        if cpu_do >= 1 and cpu_do <= 32 then
+                            cpu_fc_reset <= '1';
+                            ansi_par2 <= cpu_do(4 downto 0) - 1;
+                            scn_state <= ansi_code_poscur_H;
+                        end if;
+                    elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive
+                        scn_state <= norm;
+                    end if;
+                when ansi_code_poscur_H =>
+                    -- Wait for ANSI code H -- Final position cursor value
+                    if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1' then
+                        if cpu_do = x"48" then
+                            cpu_fc_reset <= '1';
+                            scn_state <= ansi_code_poscur;
+                        end if;
+                    elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive
+                        scn_state <= norm;
+                    end if;
+                when ansi_code_poscur =>
+                    -- Position cursor
+                    if enable = '1' then -- Update cursor values in sync with the CPU
+                        hcursor <= ansi_par2;
+                        vcursor <= ansi_par1;
+                        scn_state <= norm;
+                    end if;
+                when others => null;
             end case;
         end if;
     end if;

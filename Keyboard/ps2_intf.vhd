@@ -26,19 +26,19 @@ entity ps2_intf is
 
 architecture rtl of ps2_intf is
 type machine is(receive, inhibit, transact, tx_complete);
-signal	state				:	machine := receive;
+signal	state			:	machine := receive;
 subtype filter_t is std_logic_vector(7 downto 0);
 signal	clk_filter		:	filter_t;
 signal	ps2_clk_in		:	std_logic;
 signal	ps2_dat_in		:	std_logic;
 -- goes high when a clock falling edge is detected
-signal	clk_edge			:	std_logic;
+signal	clk_edge		:	std_logic;
 signal	bit_count		:	unsigned (3 downto 0);
 signal	receivereg		:	std_logic_vector(10 downto 0);
-signal	transreg			:	std_logic_vector(8 downto 0);
+signal	transreg		:	std_logic_vector(8 downto 0);
 signal	parity			:	std_logic;
-signal	timer		 		:	integer range 0 to clk_freq/10_000 := 0;
-signal	rx_error			:	std_logic;
+signal	timer		 	:	integer range 0 to clk_freq/10_000 := 0;
+signal	rx_error		:	std_logic;
 
 begin
 

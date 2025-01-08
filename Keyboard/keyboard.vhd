@@ -90,7 +90,7 @@ begin
                     keyb_ascii <= x"ff";
 					if tx_busy = '0' then
 						tx_ena <= '1';
-						tx_cmd <= x"ff"; -- Initialise keyboard
+						tx_cmd <= x"ff";            -- Initialise keyboard
 						keyb_state <= kb_init;
 					elsif tx_busy = '1' then
 						tx_ena <= '0';
@@ -99,7 +99,7 @@ begin
 					
 				when kb_ack1 =>
 					if keyb_valid = '1' then
-						if keyb_data = x"fa" then -- Wait for acknowledgement from keyboard
+						if keyb_data = x"fa" then   -- Wait for acknowledgement from keyboard
 							keyb_state <= kb_bat1;
 						else
 							keyb_state <= kb_init;
@@ -110,7 +110,7 @@ begin
 				
 				when kb_bat1 =>
 					if keyb_valid = '1' then
-						if keyb_data = x"aa" then -- Wait for bat from keyboard - self test passed
+						if keyb_data = x"aa" then   -- Wait for BAT from keyboard - self test passed
 							keyb_state <= kb_rep;
 						else
 							keyb_state <= kb_init;
@@ -122,7 +122,7 @@ begin
 				when kb_rep =>
 					if tx_busy = '0' then
 						tx_ena <= '1';
-						tx_cmd <= x"f3"; -- Send "set keyboard speed" code to keyboard
+						tx_cmd <= x"f3";            -- Send "set keyboard speed" code to keyboard
 						keyb_state <= kb_rep;
 					elsif tx_busy = '1' then
 						tx_ena <= '0';
@@ -131,7 +131,7 @@ begin
 							
 				when kb_ack4 =>
 					if keyb_valid = '1' then
-						if keyb_data = x"fa" then -- Wait for acknowledgement from keyboard
+						if keyb_data = x"fa" then   -- Wait for acknowledgement from keyboard
 							keyb_state <= kb_setrep;
 						else
 							keyb_state <= kb_init;
@@ -143,7 +143,7 @@ begin
 				when kb_setrep =>
 					if tx_busy = '0' then
 						tx_ena <= '1';
-						tx_cmd <= "00100100"; -- Set key repeat delay and repeat speed - 7 must be zero, 5 & 6 = auto repeat delay 11 = 1 sec - 0 to 4 repeat rate 11111 = 2hz
+						tx_cmd <= "00100100";       -- Set key repeat delay and repeat speed - 7 must be zero, 5 & 6 = auto repeat delay 11 = 1 sec - 0 to 4 repeat rate 11111 = 2hz
 						keyb_state <= kb_setrep;
 					elsif tx_busy = '1' then
 						tx_ena <= '0';
@@ -152,7 +152,7 @@ begin
 								
 				when kb_ack5 =>
 					if keyb_valid = '1' then
-						if keyb_data = x"fa" then -- Wait for acknowledgement from keyboard
+						if keyb_data = x"fa" then   -- Wait for acknowledgement from keyboard
 							keyb_state <= kb_led;
 						else
 							keyb_state <= kb_init;
@@ -164,7 +164,7 @@ begin
 				when kb_led =>
 					if tx_busy = '0' then
 						tx_ena <= '1';
-						tx_cmd <= x"ed"; -- Send "change led" code to keyboard
+						tx_cmd <= x"ed";            -- Send "change led" code to keyboard
 						keyb_state <= kb_led;
 					elsif tx_busy = '1' then
 						tx_ena <= '0';
@@ -173,7 +173,7 @@ begin
 							
 				when kb_ack2 =>
 					if keyb_valid = '1' then
-						if keyb_data = x"fa" then -- Wait for acknowledgement from keyboard
+						if keyb_data = x"fa" then   -- Wait for acknowledgement from keyboard
 							keyb_state <= kb_setled;
 						else
 							keyb_state <= kb_init;
@@ -194,7 +194,7 @@ begin
 
 				when kb_ack3 =>
 					if keyb_valid = '1' then
-						if keyb_data = x"fa" then -- Wait for acknowledgement from keyboard
+						if keyb_data = x"fa" then   -- Wait for acknowledgement from keyboard
 							keyb_state <= kb_decode;
 						else
 							keyb_state <= kb_init;
@@ -415,6 +415,7 @@ begin
                         end if;
                     end if;
                 end if;
+                when others => null;
             end case;
         end if;
     end if;

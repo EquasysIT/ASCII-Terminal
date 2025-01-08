@@ -33,7 +33,6 @@ architecture rtl of uart_rx is
   signal clk_pos     : std_logic_vector(7 downto 0);
   signal bit_count   : std_logic_vector(2 downto 0);
    
-
   type uart_machine is (idle, start, data, stop);
   signal uart_state : uart_machine := idle;
    
@@ -44,7 +43,7 @@ begin
     if rising_edge(clk) then
             rx_bit_r <= rx_bit; -- Register incoming bit
             case uart_state is
-                -- Idle
+
                 when idle =>
                     rx_valid_r <= '0';
                     clk_pos <= x"00";
@@ -91,7 +90,7 @@ begin
                         clk_pos <= clk_pos + 1;
                         uart_state <= stop;
                     else
-                        rx_valid_r <= '1';
+                        rx_valid_r <= '1';      -- We are in the middle of the stop bit and byte is now available
                         rx_byte <= rx_byte_r;
                         clk_pos <= x"00";
                         uart_state <= idle;
