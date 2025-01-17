@@ -5,7 +5,7 @@
 --Part Number: GW1NR-LV9QN88PC6/I5
 --Device: GW1NR-9
 --Device Version: C
---Created Time: Sat Dec 21 14:35:09 2024
+--Created Time: Thu Jan  9 19:28:57 2025
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -42,7 +42,7 @@ begin
     clkdiv_inst: CLKDIV
         generic map (
             GSREN => "false",
-            DIV_MODE => "5"
+            DIV_MODE => "4"
         )
         port map (
             CLKOUT => clkout,

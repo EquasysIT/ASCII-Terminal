@@ -13,7 +13,7 @@
 -file_type vhdl
 -dev_type GW1NR-9C
 -dyn_idiv_sel false
--idiv_sel 5
+-idiv_sel 7
 -dyn_fbdiv_sel false
 -fbdiv_sel 26
 -dyn_odiv_sel false

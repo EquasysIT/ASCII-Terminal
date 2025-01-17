@@ -10,5 +10,5 @@
 -path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working/src/gowin_clkdiv/
 -type CLKDIV
 -file_type vhdl
--division_factor 5
+-division_factor 4
 -calib false

@@ -40,29 +40,31 @@ architecture rtl of ascii_term is
 -------------
 
 -- Character Generator Signals
-signal addrascii_v  :   std_logic_vector(9 downto 0) := (others => '0');
+signal addrascii_v  :   std_logic_vector(11 downto 0) := (others => '0');
 signal dataascii_v  :   std_logic_vector(7 downto 0) := (others => '0');
 signal dataascii_out:   std_logic_vector(7 downto 0);
 signal ascii_r_w    :   std_logic;
 signal txtcol       :   std_logic_vector(2 downto 0);
 signal bckcol       :   std_logic_vector(2 downto 0);
-signal ansi_par1    :   std_logic_vector(4 downto 0);
-signal ansi_par2    :   std_logic_vector(4 downto 0);
+signal brdcol       :   std_logic_vector(2 downto 0);
+signal ansi_par1    :   std_logic_vector(5 downto 0);
+signal ansi_par2    :   std_logic_vector(5 downto 0);
+signal curctrl      :   std_logic;
 
 -- Scroll Screen Signals
-signal scnpos       :   std_logic_vector(9 downto 0);
+signal scnpos       :   std_logic_vector(11 downto 0);
 signal scnchar      :   std_logic_vector(7 downto 0);
 
 -- Cursor Control
-signal hcursor      :   std_logic_vector(4 downto 0) := (others => '0');
-signal vcursor      :   std_logic_vector(4 downto 0) := (others => '0');
+signal hcursor      :   std_logic_vector(5 downto 0) := (others => '0');
+signal vcursor      :   std_logic_vector(5 downto 0) := (others => '0');
 
 -- PS2 Keyboard
 signal ps2_valid    :   std_logic;
 signal ps2_ascii_s  :   std_logic_vector(7 downto 0);
 
 -- CPU Signals
-signal addrascii_c  :	std_logic_vector(9 downto 0);
+signal addrascii_c  :	std_logic_vector(11 downto 0);
 signal dataascii_in :	std_logic_vector(7 downto 0);
 signal datain_cpu   :	std_logic_vector(7 downto 0);
 signal cpu_fcounter :   std_logic_vector(12 downto 0) := (others => '0');
@@ -121,6 +123,7 @@ U2 : entity work.asciiram_dp port map
 U3: entity work.crg port map
     (
         clk => clk,
+        reset_n => reset_n,
 		enable => crg_clken,
         dataascii => dataascii_v,
         hcur_pos => hcursor,
@@ -128,6 +131,8 @@ U3: entity work.crg port map
         addrascii => addrascii_v,
         txtcol => txtcol,
         bckcol => bckcol,
+        brdcol => brdcol,
+        curctrl => curctrl,
         nCSync => nCSync,
 		nVSync => nVSync,
         R => R,
@@ -135,17 +140,23 @@ U3: entity work.crg port map
 		B => B
 	);	
 
--- Set character and background colour
+-- Set screen attributes and cursor state
 process(clk)
 begin
     if rising_edge(clk) then
         if reset_n = '0' then
-            txtcol <= "111";
-            bckcol <= "000";
+            txtcol <= "111"; -- Character colour
+            bckcol <= "000"; -- Background colour
+            brdcol <= "111"; -- Border colour
+            curctrl <= '1';  -- Cursor state
         elsif cpu_a = x"ffe2" and cpu_r_nw = '0' then
             txtcol <= cpu_do(2 downto 0);
         elsif cpu_a = x"ffe3" and cpu_r_nw = '0' then
             bckcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe4" and cpu_r_nw = '0' then
+            brdcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe5" and cpu_r_nw = '0' then
+            curctrl <= cpu_do(0);
         end if;
     end if;
 end process;
@@ -162,12 +173,12 @@ begin
             cpu_fcounter <= cpu_fcounter + 1;
         end if;
 		if reset_n = '0' then
-			addrascii_c <= cpu_fcounter(9 downto 0); -- Clear screen
+			addrascii_c <= cpu_fcounter(11 downto 0); -- Clear screen
 			dataascii_in <= x"20";
 			ascii_r_w <= '1';
-			hcursor <= "00000";
-			vcursor <= "00000";
-            scnpos <= "00" & x"20";
+			hcursor <= "000000";
+			vcursor <= "000000";
+            scnpos <= "0000" & x"40";
         else
             case scn_state is
                 -- Screen in normal none scroll state
@@ -187,10 +198,10 @@ begin
                                 end if;
                             end if;
                         elsif cpu_do = x"0d" then -- Carriage Return ascii code
-                            hcursor <= "00000";
+                            hcursor <= "000000";
                         elsif cpu_do = x"0a" then -- Line feed ascii code
-                            hcursor <= "00000";
-                            if vcursor /= 23 then
+                            hcursor <= "000000";
+                            if vcursor /= 39 then
                                 vcursor <= vcursor + 1;
                             else
                                 scn_state <= srlread;
@@ -199,9 +210,9 @@ begin
                             dataascii_in <= cpu_do;
                             hcursor <= hcursor + 1;
                             addrascii_c <= vcursor & hcursor;
-                            if hcursor = 31 then
-                                hcursor <= "00000";
-                                if vcursor /= 23 then
+                            if hcursor = 63 then
+                                hcursor <= "000000";
+                                if vcursor /= 39 then
                                     vcursor <= vcursor + 1;
                                 else
                                     scn_state <= srlread;
@@ -212,7 +223,7 @@ begin
                 -- Scroll the screen --
                 when srlread =>
                     -- Read character from row
-                    if scnpos <= 768 then
+                    if scnpos <= 2560 then
                         ascii_r_w <= '0';
                         addrascii_c <= scnpos;
                         scnchar <= dataascii_out;
@@ -220,26 +231,26 @@ begin
                     end if;
                 when srlwrite =>
                     -- Write character to row above where it was read
-                    if scnpos <= 768 then
-                        if scnpos = 768 then
+                    if scnpos <= 2560 then
+                        if scnpos = 2560 then
                             scn_state <= srlblank;
                         else
                             scn_state <= srlread;
                         end if;
                         ascii_r_w <= '1';
-                        addrascii_c <= scnpos - 33;
+                        addrascii_c <= scnpos - 65;
                         dataascii_in <= scnchar;
                         scnpos <= scnpos + 1;
                     end if;
                 when srlblank =>
                     -- Blank bottom line after scroll
-                    if addrascii_c <= 767 then
+                    if addrascii_c <= 2559 then
                         ascii_r_w <= '1';
                         addrascii_c <= addrascii_c + 1;
                         dataascii_in <= x"20";
                     else
                         ascii_r_w <= '0';
-                        scnpos <= "00" & x"20";
+                        scnpos <= "0000" & x"40";
                         scn_state <= norm;
                     end if;
                 -- End scroll the screen --
@@ -258,9 +269,9 @@ begin
                 when ansi_code_par_1 =>
                     -- Wait for ANSI parameter value 1
                     if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1'  then
-                        if cpu_do >= 1 and cpu_do <= 24 then
+                        if cpu_do >= 1 and cpu_do <= 40 then -- Get screen row
                             cpu_fc_reset <= '1';
-                            ansi_par1 <= cpu_do(4 downto 0) - 1;
+                            ansi_par1 <= cpu_do(5 downto 0) - 1;
                             scn_state <= ansi_code_action;
                         end if;
                     elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive
@@ -281,21 +292,21 @@ begin
                     end if;
                 when ansi_code_cls =>
                     -- Clear screen
-                    addrascii_c <= cpu_fcounter(9 downto 0);
+                    addrascii_c <= cpu_fcounter(11 downto 0);
                     dataascii_in <= x"20";
                     ascii_r_w <= '1';
-                    hcursor <= "00000";
-                    vcursor <= "00000";
-                    scnpos <= "00" & x"20";
-                    if cpu_fcounter = x"300" then -- Cycle 768 times to clear all characters from the screen
+                    hcursor <= "000000";
+                    vcursor <= "000000";
+                    scnpos <= "0000" & x"40";
+                    if cpu_fcounter = x"a00" then -- Cycle 2560 times to clear all characters from the screen
                         scn_state <= norm;
                     end if;
                 when ansi_code_par_2 =>
                     -- Wait for ANSI parameter value 2
                     if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1' then
-                        if cpu_do >= 1 and cpu_do <= 32 then
+                        if cpu_do >= 1 and cpu_do <= 64 then -- Get screen column
                             cpu_fc_reset <= '1';
-                            ansi_par2 <= cpu_do(4 downto 0) - 1;
+                            ansi_par2 <= cpu_do(5 downto 0) - 1;
                             scn_state <= ansi_code_poscur_H;
                         end if;
                     elsif cpu_fcounter = '1' & x"300" then -- Wait for max of &1300 CPU cycles for next code to arrive

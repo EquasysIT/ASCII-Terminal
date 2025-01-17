@@ -43,7 +43,6 @@ begin
     if rising_edge(clk) then
             rx_bit_r <= rx_bit; -- Register incoming bit
             case uart_state is
-
                 when idle =>
                     rx_valid_r <= '0';
                     clk_pos <= x"00";
@@ -56,7 +55,7 @@ begin
                     end if;
 
                 when start =>
-                    if clk_pos = 121 then       -- We are in the middle of the start bit
+                    if clk_pos = 108 then       -- We are in the middle of the start bit
                         if rx_bit_r = '0' then  -- Is it still 0 ?
                             clk_pos <= x"00";
                             uart_state <= data;
@@ -69,7 +68,7 @@ begin
                     end if;
 
                 when data =>
-                    if clk_pos < 242 then
+                    if clk_pos < 216 then
                         clk_pos <= clk_pos + 1;
                         uart_state <= data;
                     else
@@ -86,7 +85,7 @@ begin
                     end if;
 
                 when stop =>
-                    if clk_pos < 242 then
+                    if clk_pos < 216 then
                         clk_pos <= clk_pos + 1;
                         uart_state <= stop;
                     else

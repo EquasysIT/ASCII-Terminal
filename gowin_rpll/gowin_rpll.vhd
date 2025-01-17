@@ -5,7 +5,7 @@
 --Part Number: GW1NR-LV9QN88PC6/I5
 --Device: GW1NR-9
 --Device Version: C
---Created Time: Sat Dec 21 14:34:49 2024
+--Created Time: Thu Jan  9 19:28:35 2025
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -91,7 +91,7 @@ begin
             FCLKIN => "27",
             DEVICE => "GW1NR-9C",
             DYN_IDIV_SEL => "false",
-            IDIV_SEL => 4,
+            IDIV_SEL => 6,
             DYN_FBDIV_SEL => "false",
             FBDIV_SEL => 25,
             DYN_ODIV_SEL => "false",
