@@ -11,21 +11,24 @@
 ----------------
 -- 0000 to 3FFF RAM 16K
 -- 4000 to BFFF Unallocated 32K
--- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE5)
+-- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE6)
 -- C000 MS BASIC
 -- FE00 WOZMON
 
 -- I/O ports within memory map
+
 -- FCE0 read ASCII value of key pressed
--- FCE1 valid key pressed status (1 = pressed)
+-- FCE1 valid key pressed status (0 = not pressed, 1 = pressed)
 -- FCE2 read ASCII byte available over the UART interface (115200,8,1,N)
--- FCE3 valid byte available over the UART interface status (1 = byte available)
--- FFE0 send byte to screen
--- FFE1 write to LED control port
--- FFE2 Set character colour (0 = Black, 1 = Blue, 2 = Red, 3 = Magenta, 4 = Green, 5 = Cyan, 6 = Yellow, 7 = White)
--- FFE3 Set background colour
--- FFE4 Set border colour
--- FFE5 Cursor on/off (0 off, 1 on)
+-- FCE3 valid byte available over the UART interface status (0 = byte not available, 1 = byte available)
+-- FFE0 send byte to terminal
+-- FFE1 terminal busy (0 = not busy, 1 = busy)
+-- FFE2 write to LED control port
+-- FFE3 Set character colour (0 = Black, 1 = Blue, 2 = Red, 3 = Magenta, 4 = Green, 5 = Cyan, 6 = Yellow, 7 = White)
+-- FFE4 Set background colour
+-- FFE5 Set border colour
+-- FFE6 Set cursor on/off state (0 = off, 1 = on)
+
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -95,6 +98,7 @@ signal cpu_a_us     :	unsigned(15 downto 0);
 
 -- Character Generator Clock Enable
 signal crg_clken    :   std_logic;
+signal term_busy    :   std_logic;
 
 -- PS2 Keyboard
 signal keyb_valid   :   std_logic;
@@ -192,6 +196,7 @@ U7: entity work.ascii_term port map
         enable      => cpu_clken,
         crg_clken   => crg_clken,
         keyb_valid  => keyb_valid,
+        term_busy   => term_busy,
         ps2_ascii   => ps2_ascii,
         ps2_clk     => ps2_clk,
         ps2_data    => ps2_data,
@@ -210,17 +215,18 @@ cpu_di <= "0000000" & keyb_valid when cpu_a = x"fce1" and cpu_r_nw = '1' else --
           ps2_ascii when cpu_a = x"fce0" and cpu_r_nw = '1' else -- CPU read ascii value of key pressed
           "0000000" & rx_valid when cpu_a = x"fce3" and cpu_r_nw = '1' else -- CPU read UART status
           rx_byte when cpu_a = x"fce2" and cpu_r_nw = '1' else -- CPU read ascii value over UART of key pressed
+          "0000000" & term_busy when cpu_a = x"ffe1" and cpu_r_nw = '1' else -- CPU read terminal status
           rom_data when rom_enable = '1' else
           ram_data when ram_enable = '1' else
           x"ff";
 
--- Control LEDs by writing to port FFE1
+-- Control LEDs by writing to port FFE2
 process(clk25)
 begin
     if rising_edge(clk25) then
         if reset_n = '0' then
             led <= "111111";
-        elsif cpu_a = x"ffe1" and cpu_r_nw = '0' then
+        elsif cpu_a = x"ffe2" and cpu_r_nw = '0' then
             led <= not cpu_do(5 downto 0);
         end if;
     end if;

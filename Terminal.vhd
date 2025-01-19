@@ -21,6 +21,7 @@ entity ascii_term is
            enable     	: in   std_logic;
            crg_clken    : in   std_logic;
            keyb_valid   : out  std_logic;
+           term_busy    : out  std_logic;
            ps2_ascii    : out  std_logic_vector(7 downto 0);
            ps2_clk      : inout	std_logic;
            ps2_data     : inout	std_logic;
@@ -149,13 +150,13 @@ begin
             bckcol <= "000"; -- Background colour
             brdcol <= "111"; -- Border colour
             curctrl <= '1';  -- Cursor state
-        elsif cpu_a = x"ffe2" and cpu_r_nw = '0' then
-            txtcol <= cpu_do(2 downto 0);
         elsif cpu_a = x"ffe3" and cpu_r_nw = '0' then
-            bckcol <= cpu_do(2 downto 0);
+            txtcol <= cpu_do(2 downto 0);
         elsif cpu_a = x"ffe4" and cpu_r_nw = '0' then
-            brdcol <= cpu_do(2 downto 0);
+            bckcol <= cpu_do(2 downto 0);
         elsif cpu_a = x"ffe5" and cpu_r_nw = '0' then
+            brdcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe6" and cpu_r_nw = '0' then
             curctrl <= cpu_do(0);
         end if;
     end if;
@@ -179,10 +180,12 @@ begin
 			hcursor <= "000000";
 			vcursor <= "000000";
             scnpos <= "0000" & x"40";
+            term_busy <= '0';
         else
             case scn_state is
                 -- Screen in normal none scroll state
                 when norm =>
+                    term_busy <= '0';
                     if (cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1' and cpu_do /= x"ff") then -- CPU writing to screen with valid character
                         ascii_r_w <= '1';
                         if cpu_do = x"1b" then -- Escape sequence so process ANSI code
@@ -222,6 +225,7 @@ begin
                     end if;
                 -- Scroll the screen --
                 when srlread =>
+                    term_busy <= '1';
                     -- Read character from row
                     if scnpos <= 2560 then
                         ascii_r_w <= '0';
