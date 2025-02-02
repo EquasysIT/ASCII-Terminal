@@ -50,7 +50,11 @@ signal bckcol       :   std_logic_vector(2 downto 0);
 signal brdcol       :   std_logic_vector(2 downto 0);
 signal ansi_par1    :   std_logic_vector(5 downto 0);
 signal ansi_par2    :   std_logic_vector(5 downto 0);
+signal scrn_width   :   std_logic_vector(5 downto 0);
+signal scrn_height  :   std_logic_vector(5 downto 0);
+signal scrn_chars   :   std_logic_vector(11 downto 0);
 signal curctrl      :   std_logic;
+signal mode         :   std_logic;
 
 -- Scroll Screen Signals
 signal scnpos       :   std_logic_vector(11 downto 0);
@@ -126,6 +130,7 @@ U3: entity work.crg port map
         clk => clk,
         reset_n => reset_n,
 		enable => crg_clken,
+        mode => mode,
         dataascii => dataascii_v,
         hcur_pos => hcursor,
         vcur_pos => vcursor,
@@ -140,27 +145,6 @@ U3: entity work.crg port map
         G => G,
 		B => B
 	);	
-
--- Set screen attributes and cursor state
-process(clk)
-begin
-    if rising_edge(clk) then
-        if reset_n = '0' then
-            txtcol <= "111"; -- Character colour
-            bckcol <= "000"; -- Background colour
-            brdcol <= "111"; -- Border colour
-            curctrl <= '1';  -- Cursor state
-        elsif cpu_a = x"ffe3" and cpu_r_nw = '0' then
-            txtcol <= cpu_do(2 downto 0);
-        elsif cpu_a = x"ffe4" and cpu_r_nw = '0' then
-            bckcol <= cpu_do(2 downto 0);
-        elsif cpu_a = x"ffe5" and cpu_r_nw = '0' then
-            brdcol <= cpu_do(2 downto 0);
-        elsif cpu_a = x"ffe6" and cpu_r_nw = '0' then
-            curctrl <= cpu_do(0);
-        end if;
-    end if;
-end process;
 
 -- Write to screen and manage scrolling
 process(clk)
@@ -181,7 +165,40 @@ begin
 			vcursor <= "000000";
             scnpos <= "0000" & x"40";
             term_busy <= '0';
+            txtcol <= "000"; -- Character colour
+            bckcol <= "111"; -- Background colour
+            brdcol <= "101"; -- Border colour
+            curctrl <= '1';  -- Cursor state
+            scrn_width <= "011111"; -- 0 to 31
+            scrn_height <= "010011"; -- 0 to 19
+            scrn_chars <= scrn_height & scrn_width;
+            mode <= '0';     -- Default screen mode 32 x 20
+
+        -- Set screen attributes and cursor state
+        elsif cpu_a = x"ffe3" and cpu_r_nw = '0' then
+            txtcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe4" and cpu_r_nw = '0' then
+            bckcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe5" and cpu_r_nw = '0' then
+            brdcol <= cpu_do(2 downto 0);
+        elsif cpu_a = x"ffe6" and cpu_r_nw = '0' then
+            curctrl <= cpu_do(0);
+        elsif cpu_a = x"ffe7" and cpu_r_nw = '0' then
+            mode <= cpu_do(0);
+            if mode = '0' then
+                scrn_width <= "011111";  -- 0 to 31
+                scrn_height <= "010011"; -- 0 to 19
+                scrn_chars <= scrn_height & scrn_width;
+            else
+                scrn_width <= "111111";  -- 0 to 63
+                scrn_height <= "100111"; -- 0 to 39
+                scrn_chars <= scrn_height & scrn_width;
+            end if;
+            -- Clear screen
+            cpu_fc_reset <= '1';
+            scn_state <= ansi_code_cls;
         else
+        -- Screen control
             case scn_state is
                 -- Screen in normal none scroll state
                 when norm =>
@@ -197,6 +214,10 @@ begin
                                 hcursor <= hcursor - 1;
                                 addrascii_c <= vcursor & hcursor - 1;
                                 if hcursor = 0 then
+                                    if mode = '0' then -- Need to reduce hcursor by extra 32 chars every row in mode 32 x 20 as memory layout also covers 64 x 40 mode
+                                        hcursor <= hcursor - 33;
+                                        addrascii_c <= vcursor & hcursor - 33;
+                                    end if;
                                     vcursor <= vcursor - 1;
                                 end if;
                             end if;
@@ -204,7 +225,7 @@ begin
                             hcursor <= "000000";
                         elsif cpu_do = x"0a" then -- Line feed ascii code
                             hcursor <= "000000";
-                            if vcursor /= 39 then
+                            if vcursor /= scrn_height then
                                 vcursor <= vcursor + 1;
                             else
                                 scn_state <= srlread;
@@ -213,9 +234,9 @@ begin
                             dataascii_in <= cpu_do;
                             hcursor <= hcursor + 1;
                             addrascii_c <= vcursor & hcursor;
-                            if hcursor = 63 then
+                            if hcursor = scrn_width then
                                 hcursor <= "000000";
-                                if vcursor /= 39 then
+                                if vcursor /= scrn_height then
                                     vcursor <= vcursor + 1;
                                 else
                                     scn_state <= srlread;
@@ -227,7 +248,7 @@ begin
                 when srlread =>
                     term_busy <= '1';
                     -- Read character from row
-                    if scnpos <= 2560 then
+                    if scnpos <= scrn_chars + 1 then
                         ascii_r_w <= '0';
                         addrascii_c <= scnpos;
                         scnchar <= dataascii_out;
@@ -235,20 +256,24 @@ begin
                     end if;
                 when srlwrite =>
                     -- Write character to row above where it was read
-                    if scnpos <= 2560 then
-                        if scnpos = 2560 then
+                    if scnpos <= scrn_chars + 1 then
+                        if scnpos = scrn_chars + 1 then
                             scn_state <= srlblank;
                         else
                             scn_state <= srlread;
                         end if;
                         ascii_r_w <= '1';
-                        addrascii_c <= scnpos - 65;
+                        addrascii_c <= (scnpos - 65);
                         dataascii_in <= scnchar;
-                        scnpos <= scnpos + 1;
+                        if scnpos(5) = '1' and mode = '0' then -- Skip bit 5 (32 chars) every row in mode 32 x 20 as memory layout also covers 64 x 40 mode
+                            scnpos(11 downto 5) <= (scnpos(11 downto 6) + 1) & '0';
+                        else
+                            scnpos <= scnpos + 1;
+                        end if;
                     end if;
                 when srlblank =>
                     -- Blank bottom line after scroll
-                    if addrascii_c <= 2559 then
+                    if addrascii_c <= scrn_chars then
                         ascii_r_w <= '1';
                         addrascii_c <= addrascii_c + 1;
                         dataascii_in <= x"20";
@@ -273,7 +298,7 @@ begin
                 when ansi_code_par_1 =>
                     -- Wait for ANSI parameter value 1
                     if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1'  then
-                        if cpu_do >= 1 and cpu_do <= 40 then -- Get screen row
+                        if cpu_do >= 1 and cpu_do - 1 <= scrn_height then -- Get screen row or clear screen (2)
                             cpu_fc_reset <= '1';
                             ansi_par1 <= cpu_do(5 downto 0) - 1;
                             scn_state <= ansi_code_action;
@@ -302,13 +327,13 @@ begin
                     hcursor <= "000000";
                     vcursor <= "000000";
                     scnpos <= "0000" & x"40";
-                    if cpu_fcounter = x"a00" then -- Cycle 2560 times to clear all characters from the screen
+                    if cpu_fcounter = scrn_chars then -- Clear all characters from the screen
                         scn_state <= norm;
                     end if;
                 when ansi_code_par_2 =>
                     -- Wait for ANSI parameter value 2
                     if cpu_a = x"ffe0" and cpu_r_nw = '0' and enable = '1' then
-                        if cpu_do >= 1 and cpu_do <= 64 then -- Get screen column
+                        if cpu_do >= 1 and cpu_do - 1 <= scrn_width then -- Get screen column
                             cpu_fc_reset <= '1';
                             ansi_par2 <= cpu_do(5 downto 0) - 1;
                             scn_state <= ansi_code_poscur_H;

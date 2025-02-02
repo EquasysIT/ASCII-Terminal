@@ -7,7 +7,7 @@
 
 -mod_name Gowin_CLKDIV
 -file_name gowin_clkdiv
--path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working/src/gowin_clkdiv/
+-path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working-64X40/src/gowin_clkdiv/
 -type CLKDIV
 -file_type vhdl
 -division_factor 4

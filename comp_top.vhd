@@ -11,7 +11,7 @@
 ----------------
 -- 0000 to 3FFF RAM 16K
 -- 4000 to BFFF Unallocated 32K
--- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE6)
+-- C000 to FFFF ROM 16K (Excludes FCE0-FCE3 and FFE0-FFE7)
 -- C000 MS BASIC
 -- FE00 WOZMON
 
@@ -28,6 +28,7 @@
 -- FFE4 Set background colour
 -- FFE5 Set border colour
 -- FFE6 Set cursor on/off state (0 = off, 1 = on)
+-- FFE7 Set screen mode (0 = 32 x 20, 1 = 64 x 40)
 
 
 library ieee;

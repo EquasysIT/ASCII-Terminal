@@ -8,7 +8,7 @@
 
 -- 640 x 480 Total Pixels
 -- 512 x 320 Active Pixels due to border
--- 64 x 40 Character Resolution - Each character is 8 x 8 pixels
+-- 64 x 40 or 32 x 20 Character Resolution - Each character is 8 x 8 pixels
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -19,6 +19,7 @@ entity crg is
     Port ( clk 		   : in   std_logic;
            reset_n     : in   std_logic;
 		   enable	   : in   std_logic;
+		   mode        : in   std_logic;
            dataascii   : in   std_logic_vector(7 downto 0);
            hcur_pos    : in   std_logic_vector(5 downto 0);
            vcur_pos    : in   std_logic_vector(5 downto 0);
@@ -170,25 +171,28 @@ end process;
 hcounter2 <= hcounter - 224; -- Must start on a "divide by 8" boundary
 
 -- Get character at current pixel position on screen
--- Divide pixel counters by 8 to get character counters
-hchar <= hcounter2(8 downto 3);
-vchar <= vcounter(8 downto 3);
+-- Divide pixel counters by 8 or 16 depending on screen mode, to get character counters
+hchar <= hcounter2(9 downto 4) when mode = '0' else hcounter2(8 downto 3);
+vchar <= vcounter(9 downto 4) when mode = '0' else vcounter(8 downto 3);
 
 -- Pixel ROM address decoding
 -- Subtract 32 from dataascii to create signal which enables easier pixelrom address decoding
 dataascii32 <= dataascii - 32;
 addrascii <= vchar & hchar;
-addrpixel <= dataascii32(6 downto 5) & vcounter(2 downto 0) & dataascii(4 downto 0);
+addrpixel <= dataascii32(6 downto 5) & vcounter(3 downto 1) & dataascii(4 downto 0) when mode = '0' else
+             dataascii32(6 downto 5) & vcounter(2 downto 0) & dataascii(4 downto 0);
 
 -- Hardware Cursor
 process(clk)
 begin
 	if rising_edge(clk) then
-        if hchar = hcur_pos and vchar = vcur_pos and vcounter(2 downto 0) = "111" and curctrl = '1' then
-            if flshcount(23) = '1' then
-                cursor <= "11111111";
-            else
-                cursor <= "00000000";
+        if hchar = hcur_pos and vchar = vcur_pos and curctrl = '1' then
+            if (mode = '0' and vcounter(3 downto 0) = "1111") or (mode = '1' and vcounter(2 downto 0) = "111") then
+                if flshcount(23) = '1' then
+                    cursor <= "11111111";
+                else
+                    cursor <= "00000000";
+                end if;
             end if;
         else
             cursor <= "00000000";
@@ -201,9 +205,9 @@ process(clk)
 begin
     if rising_edge(clk) then
         if enable = '1' then
-            if hcounter(2 downto 0) = "010" then        -- Delay by 2 pixel clock ticks to give time for Character RAM and Pixel ROM to deliver data for first character.
+            if (mode = '0' and hcounter(3 downto 0) = "0010") or (mode = '1' and hcounter(2 downto 0) = "010") then        -- Delay by 2 pixel clock ticks to give time for Character RAM and Pixel ROM to deliver data for first character.
                 pixelreg <= datapixel xor cursor;       -- Left border is wider by 2 pixels to cover this
-            else
+            elsif mode = '1' or (mode = '0' and hcounter(0) = '1') then
                 pixelreg <= pixelreg(6 downto 0) & '1';
             end if;
         end if;

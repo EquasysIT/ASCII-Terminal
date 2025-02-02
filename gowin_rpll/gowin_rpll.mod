@@ -7,7 +7,7 @@
 
 -mod_name Gowin_rPLL
 -file_name gowin_rpll
--path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working/src/gowin_rpll/
+-path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working-64X40/src/gowin_rpll/
 -type PLL
 -rPll true
 -file_type vhdl
