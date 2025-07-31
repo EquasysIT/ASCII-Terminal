@@ -2,10 +2,10 @@
 --All rights reserved.
 --File Title: IP file
 --Tool Version: V1.9.9.03 Education (64-bit)
---Part Number: GW1NR-LV9QN88PC6/I5
---Device: GW1NR-9
+--Part Number: GW2AR-LV18QN88C8/I7
+--Device: GW2AR-18
 --Device Version: C
---Created Time: Wed Jan 22 16:21:30 2025
+--Created Time: Tue Mar 18 19:15:41 2025
 
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -35,7 +35,7 @@ architecture Behavioral of Gowin_rPLL is
     component rPLL
         generic (
             FCLKIN: in string := "100.0";
-            DEVICE: in string := "GW1N-4";
+            DEVICE: in string := "GW2A-18";
             DYN_IDIV_SEL: in string := "false";
             IDIV_SEL: in integer := 0;
             DYN_FBDIV_SEL: in string := "false";
@@ -89,13 +89,13 @@ begin
     rpll_inst: rPLL
         generic map (
             FCLKIN => "27",
-            DEVICE => "GW1NR-9C",
+            DEVICE => "GW2AR-18C",
             DYN_IDIV_SEL => "false",
             IDIV_SEL => 6,
             DYN_FBDIV_SEL => "false",
             FBDIV_SEL => 25,
             DYN_ODIV_SEL => "false",
-            ODIV_SEL => 4,
+            ODIV_SEL => 8,
             PSDA_SEL => "0000",
             DYN_DA_EN => "true",
             DUTYDA_SEL => "1000",

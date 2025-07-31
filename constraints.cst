@@ -1,38 +1,56 @@
-IO_LOC  "clk27" 52;
-IO_PORT "clk27"     IO_TYPE=LVCMOS33 PULL_MODE=UP;
+//--------------------------------------------------------------
+//-- Engineer: A Burgess                                      --
+//--                                                          --
+//-- Design Name: Basic Computer System - Constraints file    --
+//--                                                          --
+//--------------------------------------------------------------
+// Design for the TANG Nano 20K installed in the BeebFPGA Dock board
 
-IO_LOC  "nCSync" 38;
-IO_PORT "nCSync"	DRIVE=8 IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC  "clk27" 4;
+IO_PORT "clk27" IO_TYPE=LVCMOS33;
 
-IO_LOC  "nVSync" 37;
-IO_PORT "nVSync"	DRIVE=8 IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC  "nCSync" 77;
+IO_PORT "nCSync" IO_TYPE=LVCMOS33 DRIVE=12;
 
-IO_LOC  "R" 77;
-IO_PORT "R"         IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC  "nVSync" 31;
+IO_PORT "nVSync" IO_TYPE=LVCMOS33 DRIVE=12;
 
-IO_LOC  "G" 76;
-IO_PORT "G"         IO_TYPE=LVCMOS33 PULL_MODE=UP;
+// Differential drivers for RGB when used with the BeebFPGA Dock board for the Tang Nano 20K
+IO_LOC  "R" 27;
+IO_PORT "R" IO_TYPE=LVCMOS33D DRIVE=12;
 
-IO_LOC  "B" 48;
-IO_PORT "B"         IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC  "G" 25;
+IO_PORT "G" IO_TYPE=LVCMOS33D DRIVE=12;
 
-IO_LOC  "btn1" 3;
+IO_LOC  "B" 29;
+IO_PORT "B" IO_TYPE=LVCMOS33D DRIVE=12;
+
+IO_LOC  "btn1" 88;
 IO_PORT "btn1" IO_TYPE=LVCMOS18;
 
-IO_LOC  "btn2" 4;
+IO_LOC  "btn2" 87;
 IO_PORT "btn2" IO_TYPE=LVCMOS18;
 
-IO_LOC "led[0]" 10;
-IO_LOC "led[1]" 11;
-IO_LOC "led[2]" 13;
-IO_LOC "led[3]" 14;
-IO_LOC "led[4]" 15;
-IO_LOC "led[5]" 16;
+IO_LOC "led[0]" 15;
+IO_LOC "led[1]" 16;
+IO_LOC "led[2]" 17;
+IO_LOC "led[3]" 18;
+IO_LOC "led[4]" 19;
+IO_LOC "led[5]" 20;
 
-IO_LOC "ps2_clk" 25;
-IO_PORT "ps2_clk" IO_TYPE=LVCMOS33;
-IO_LOC "ps2_data" 26;
-IO_PORT "ps2_data" IO_TYPE=LVCMOS33;
+IO_LOC "ps2_clk" 73;
+IO_PORT "ps2_clk" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC "ps2_data" 74;
+IO_PORT "ps2_data" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
-IO_LOC "rxd" 18;
+IO_LOC "txd" 69;
+IO_PORT "txd" IO_TYPE=LVCMOS33;
+
+IO_LOC "rxd" 70;
 IO_PORT "rxd" IO_TYPE=LVCMOS33;
+
+// 1-bit PWM Audio
+IO_LOC "sndl" 42;
+IO_PORT "sndl" IO_TYPE=LVCMOS33;
+IO_LOC "sndr" 41;
+IO_PORT "sndr" IO_TYPE=LVCMOS33;

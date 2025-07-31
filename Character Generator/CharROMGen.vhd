@@ -1,9 +1,9 @@
 --------------------------------------------------------------
 -- Engineer: A Burgess                                      --
 --                                                          --
--- Design Name: Character ROM Generator                     --
+-- Design Name: Basic Computer System                       --
+--              Character ROM Generator                     --
 --                                                          --
--- October 2024                                             --
 --------------------------------------------------------------
 
 -- 640 x 480 Total Pixels
@@ -13,21 +13,25 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
-use ieee.numeric_std.all;
 
 entity crg is
     Port ( clk 		   : in   std_logic;
            reset_n     : in   std_logic;
 		   enable	   : in   std_logic;
 		   mode        : in   std_logic;
+           edit        : in   std_logic;
            dataascii   : in   std_logic_vector(7 downto 0);
            hcur_pos    : in   std_logic_vector(5 downto 0);
            vcur_pos    : in   std_logic_vector(5 downto 0);
+           hcur_pos_e  : in   std_logic_vector(5 downto 0);
+           vcur_pos_e  : in   std_logic_vector(5 downto 0);
            addrascii   : out  std_logic_vector(11 downto 0);
            txtcol      : in   std_logic_vector(2 downto 0);
            bckcol      : in   std_logic_vector(2 downto 0);
            brdcol      : in   std_logic_vector(2 downto 0);
-           curctrl     : in   std_logic;
+           curonoff    : in   std_logic;
+           curflash    : in   std_logic;
+           curtype     : in   std_logic;
            nCSync	   : out  std_logic;
 		   nVSync	   : out  std_logic;
            R		   : out  std_logic;
@@ -92,10 +96,7 @@ U1 : entity work.pixelrom port map
 process(clk)
 begin
     if rising_edge(clk) then
-        if reset_n = '0' then
-            hcounter <= (others => '0');
-            vcounter <= (others => '0');
-        elsif enable = '1' then
+        if enable = '1' then
             if hcounter = 799 then
                 hcounter <= (others => '0');
                 if vcounter = 524 then 
@@ -182,13 +183,35 @@ addrascii <= vchar & hchar;
 addrpixel <= dataascii32(6 downto 5) & vcounter(3 downto 1) & dataascii(4 downto 0) when mode = '0' else
              dataascii32(6 downto 5) & vcounter(2 downto 0) & dataascii(4 downto 0);
 
--- Hardware Cursor
+-- Main & Edit Hardware Cursor
 process(clk)
 begin
 	if rising_edge(clk) then
-        if hchar = hcur_pos and vchar = vcur_pos and curctrl = '1' then
-            if (mode = '0' and vcounter(3 downto 0) = "1111") or (mode = '1' and vcounter(2 downto 0) = "111") then
-                if flshcount(23) = '1' then
+        -- Not in Edit Mode
+        if edit = '0' then
+        -- Display Main cursor
+            if hchar = hcur_pos and vchar = vcur_pos and curonoff = '1' then
+                if ((mode = '0' and (vcounter(3 downto 0) = "1111" and curtype = '1')) or (mode = '0' and curtype = '0') or
+                    (mode = '1' and (vcounter(2 downto 0) = "111" and curtype = '1')) or (mode = '1' and curtype = '0')) then
+                    if curflash = '0' then -- Cursor on permanently
+                        cursor <= "11111111";
+                    elsif flshcount(23) = '1' then -- Cursor flashing 
+                        cursor <= "11111111";
+                    else
+                        cursor <= "00000000";
+                    end if;
+                end if;
+            else
+                cursor <= "00000000";
+            end if;
+        -- In Edit Mode
+        -- Change Main cursor to block
+        elsif hchar = hcur_pos and vchar = vcur_pos then
+            cursor <= "11111111";
+        -- Display Edit cursor as underline
+        elsif hchar = hcur_pos_e and vchar = vcur_pos_e then
+            if (mode = '0' and (vcounter(3 downto 0) = "1111")) or (mode = '1' and (vcounter(2 downto 0) = "111")) then
+                if flshcount(23) = '1' then -- Cursor flashing 
                     cursor <= "11111111";
                 else
                     cursor <= "00000000";
@@ -205,8 +228,8 @@ process(clk)
 begin
     if rising_edge(clk) then
         if enable = '1' then
-            if (mode = '0' and hcounter(3 downto 0) = "0010") or (mode = '1' and hcounter(2 downto 0) = "010") then        -- Delay by 2 pixel clock ticks to give time for Character RAM and Pixel ROM to deliver data for first character.
-                pixelreg <= datapixel xor cursor;       -- Left border is wider by 2 pixels to cover this
+            if (mode = '0' and hcounter(3 downto 0) = "0010") or (mode = '1' and hcounter(2 downto 0) = "010") then     -- Delay by 2 pixel clock ticks to give time for Character RAM and Pixel ROM to deliver data for first character.
+                pixelreg <= datapixel xor cursor;                                                                       -- Left border is wider by 2 pixels to cover this
             elsif mode = '1' or (mode = '0' and hcounter(0) = '1') then
                 pixelreg <= pixelreg(6 downto 0) & '1';
             end if;
@@ -221,7 +244,7 @@ blue <= txtcol(0) when pixelreg(7) = '0' else bckcol(0);
 video <= '1' when hgenvideo = '1' and vgenvideo = '1' else '0';
 
 process(video, pixel, red, green, blue, brdcol, hblanking, vblanking)
-begin		
+begin
     if video = '1' then -- Main video display area
         R <= red;
 		G <= green;

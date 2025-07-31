@@ -1,9 +1,8 @@
 --------------------------------------------------------------
 -- Engineer: A Burgess                                      --
 --                                                          --
--- Design Name: ASCII Character RAM                         --
+-- Design Name: Basic Computer System - ASCII Character RAM --
 --                                                          --
--- October 2024                                             --
 --------------------------------------------------------------
 
 library ieee;

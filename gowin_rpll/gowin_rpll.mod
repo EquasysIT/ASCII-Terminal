@@ -1,23 +1,23 @@
--series GW1NR
--device GW1NR-9
+-series GW2AR
+-device GW2AR-18
 -device_version C
--package QFN88P
--part_number GW1NR-LV9QN88PC6/I5
+-package QFN88
+-part_number GW2AR-LV18QN88C8/I7
 
 
 -mod_name Gowin_rPLL
 -file_name gowin_rpll
--path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working-64X40/src/gowin_rpll/
+-path D:/FPGA/Tang Nano 9K/Basic Computer/Basic Computer-Fully-Working-32X20-and-64X40-BBC-BASIC-Nano-20K/src/gowin_rpll/
 -type PLL
 -rPll true
 -file_type vhdl
--dev_type GW1NR-9C
+-dev_type GW2AR-18C
 -dyn_idiv_sel false
 -idiv_sel 7
 -dyn_fbdiv_sel false
 -fbdiv_sel 26
 -dyn_odiv_sel false
--odiv_sel 4
+-odiv_sel 8
 -dyn_da_en true
 -rst_sig false
 -rst_sig_p false

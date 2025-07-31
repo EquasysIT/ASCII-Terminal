@@ -1,10 +1,10 @@
 -- Keyboard interface
 -- Based loosely on ps2_ctrl.vhd (c) alse. http://www.alse-fr.com
--- Added support for usb/ps2 keyboards which issue "AA" BAT code to detect a PS2 connection - A Burgess
+-- Added bidirectional support for usb/ps2 keyboards which issue "AA" BAT code to detect a PS2 connection - A Burgess
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use ieee.std_logic_unsigned.all;
 
 entity ps2_intf is
 	generic(clk_freq	:	integer := 28_000_000); -- Set to incoming clock frequency

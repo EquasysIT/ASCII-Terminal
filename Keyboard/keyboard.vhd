@@ -1,16 +1,12 @@
 --------------------------------------------------------------
 -- Engineer: A Burgess                                      --
 --                                                          --
--- Design Name: ASCII Keyboard                              --
+-- Design Name: Basic Computer System - ASCII Keyboard      --
 --                                                          --
--- October 2024                                             --
 --------------------------------------------------------------
-
 
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
-use ieee.numeric_std.all;
 
 entity keyboard is
 port (
@@ -287,13 +283,33 @@ begin
                                       -- General keys
                                       case keyb_data is
                                         when x"29" => keyb_ascii <= x"20"; -- Space
-                                        when x"66" => keyb_ascii <= x"08"; -- Backspace
+                                        when x"66" => keyb_ascii <= x"7f"; -- Backspace
                                         when x"0d" => keyb_ascii <= x"09"; -- Tab
                                         when x"5a" => keyb_ascii <= x"0d"; -- Return
                                         when x"76" => keyb_ascii <= x"1b"; -- Esc
+                                        when x"70" => 
+                                          if extend = '1' then
+                                            keyb_ascii <= x"10";           -- Insert
+                                          end if;
                                         when x"71" => 
-                                          if(extend = '1') then
+                                          if extend = '1' then
                                             keyb_ascii <= x"7f";           -- Delete
+                                          end if;
+                                        when x"75" => 
+                                          if extend = '1' then
+                                            keyb_ascii <= x"11";           -- Up Arrow
+                                          end if;
+                                        when x"72" => 
+                                          if extend = '1' then
+                                            keyb_ascii <= x"12";           -- Down Arrow
+                                          end if;
+                                        when x"6b" => 
+                                          if extend = '1' then
+                                            keyb_ascii <= x"13";           -- Left Arrow
+                                          end if;
+                                        when x"74" => 
+                                          if extend = '1' then
+                                            keyb_ascii <= x"14";           -- Right Arrow
                                           end if;
                                         when others => null;
                                       end case;
@@ -363,26 +379,27 @@ begin
                                       if shift = '1' then
                                         case keyb_data is              
                                           when x"16" => keyb_ascii <= x"21"; -- !
-                                          when x"52" => keyb_ascii <= x"22"; -- "
-                                          when x"26" => keyb_ascii <= x"23"; -- #
+                                          when x"52" => keyb_ascii <= x"40"; -- "
+                                          when x"26" => keyb_ascii <= x"60"; -- £
                                           when x"25" => keyb_ascii <= x"24"; -- $
                                           when x"2e" => keyb_ascii <= x"25"; -- %
-                                          when x"3d" => keyb_ascii <= x"26"; -- &              
+                                          when x"36" => keyb_ascii <= x"5e"; -- ^
+                                          when x"3d" => keyb_ascii <= x"26"; -- &
+                                          when x"3e" => keyb_ascii <= x"2a"; -- *              
                                           when x"46" => keyb_ascii <= x"28"; -- (
                                           when x"45" => keyb_ascii <= x"29"; -- )
-                                          when x"3e" => keyb_ascii <= x"2a"; -- *
                                           when x"55" => keyb_ascii <= x"2b"; -- +
                                           when x"4c" => keyb_ascii <= x"3a"; -- :
                                           when x"41" => keyb_ascii <= x"3c"; -- <
                                           when x"49" => keyb_ascii <= x"3e"; -- >
                                           when x"4a" => keyb_ascii <= x"3f"; -- ?
-                                          when x"1e" => keyb_ascii <= x"40"; -- @
-                                          when x"36" => keyb_ascii <= x"5e"; -- ^
+                                          when x"1e" => keyb_ascii <= x"22"; -- @
                                           when x"4e" => keyb_ascii <= x"5f"; -- _
                                           when x"54" => keyb_ascii <= x"7b"; -- {
-                                          when x"5d" => keyb_ascii <= x"7c"; -- |
+                                          when x"5d" => keyb_ascii <= x"7e"; -- ~
                                           when x"5b" => keyb_ascii <= x"7d"; -- }
-                                          when x"0e" => keyb_ascii <= x"7e"; -- ~
+                                          when x"61" => keyb_ascii <= x"7c"; -- |
+                                          when x"0e" => keyb_ascii <= x"7c"; -- |
                                           when others => null;
                                         end case;
                                       else
@@ -405,9 +422,10 @@ begin
                                           when x"4c" => keyb_ascii <= x"3b"; -- ;
                                           when x"55" => keyb_ascii <= x"3d"; -- =
                                           when x"54" => keyb_ascii <= x"5b"; -- [
-                                          when x"5d" => keyb_ascii <= x"5c"; -- \
+                                          when x"5d" => keyb_ascii <= x"23"; -- #
                                           when x"5b" => keyb_ascii <= x"5d"; -- ]
-                                          when x"0e" => keyb_ascii <= x"60"; -- `
+                                          when x"61" => keyb_ascii <= x"5c"; -- \
+                                          when x"0e" => keyb_ascii <= x"5c"; -- \
                                           when others => null;
                                         end case;
                                 end if;

@@ -1,9 +1,8 @@
 --------------------------------------------------------------
 -- Engineer: A Burgess                                      --
 --                                                          --
--- Design Name: Computer System RAM                         --
+-- Design Name: Basic Computer System - Main System RAM     --
 --                                                          --
--- October 2024                                             --
 --------------------------------------------------------------
 
 library ieee;
